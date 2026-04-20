@@ -22,6 +22,7 @@
     const FiverrSafeTool = () => {
       const [inputText, setInputText] = useState('');
       const [outputHTML, setOutputHTML] = useState('');
+      const [copyHTML, setCopyHTML] = useState('');
       const [outputText, setOutputText] = useState('');
       const [foundWords, setFoundWords] = useState(new Set());
       const [highlight, setHighlight] = useState(true);
@@ -93,23 +94,29 @@
           });
         });
 
-        // Add colors for Buyer: and Seller:
-        htmlText = htmlText.replace(/buyer\s*:/gi, '<b style="color: red;">Buyer:</b>');
-        htmlText = htmlText.replace(/seller\s*:/gi, '<b style="color: blue;">Seller:</b>');
+        const applyLabels = (str) => {
+          let res = str;
+          res = res.replace(/buyer\s*:/gi, '<b style="color: red;">Buyer:</b>');
+          res = res.replace(/seller\s*:/gi, '<b style="color: blue;">Seller:</b>');
+          res = res.replace(/requirements\s*:/gi, '<b style="color: #FF00FF;">Requirements:</b>');
+          res = res.replace(/custom\s*offer\s*:/gi, '<b style="color: #FF00FF;">Custom Offer:</b>');
+          return res;
+        };
 
-        // Add colors for Requirements: and Custom Offer:
-        htmlText = htmlText.replace(/requirements\s*:/gi, '<b style="color: #FF00FF;">Requirements:</b>');
-        htmlText = htmlText.replace(/custom\s*offer\s*:/gi, '<b style="color: #FF00FF;">Custom Offer:</b>');
+        // Generate final HTML for display (with highlights)
+        let finalDisplayHTML = applyLabels(htmlText);
+        finalDisplayHTML = finalDisplayHTML.replace(/\n/g, '<br />');
+        finalDisplayHTML = `<div style="color: black; font-family: Arial, sans-serif;">${finalDisplayHTML}</div>`;
 
-        // Preserve line breaks for HTML output
-        htmlText = htmlText.replace(/\n/g, '<br />');
-
-        // Wrap in a span to ensure the rest of the text is explicitly black for the clipboard
-        htmlText = `<div style="color: black; font-family: Arial, sans-serif;">${htmlText}</div>`;
+        // Generate final HTML for copying (without highlights on restricted words)
+        let finalCopyHTML = applyLabels(text);
+        finalCopyHTML = finalCopyHTML.replace(/\n/g, '<br />');
+        finalCopyHTML = `<div style="color: black; font-family: Arial, sans-serif;">${finalCopyHTML}</div>`;
 
         setFoundWords(found);
         setOutputText(text);
-        setOutputHTML(htmlText);
+        setOutputHTML(finalDisplayHTML);
+        setCopyHTML(finalCopyHTML);
         updateCounts(inputText, text);
 
         // Clear input and show toast
@@ -141,7 +148,7 @@
         try {
           // The most reliable way to copy rich text (HTML + Plain Text)
           const onCopy = (e) => {
-            e.clipboardData.setData('text/html', outputHTML);
+            e.clipboardData.setData('text/html', copyHTML);
             e.clipboardData.setData('text/plain', outputText);
             e.preventDefault();
           };
