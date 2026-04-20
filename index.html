@@ -1,0 +1,339 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="shortcut icon" href="https://i.postimg.cc/KYdbfhf0/shield.png" type="image/x-icon">
+  <title>Fiverr Safe Message For BDT</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const FiverrSafeTool = () => {
+      const [inputText, setInputText] = useState('');
+      const [outputHTML, setOutputHTML] = useState('');
+      const [outputText, setOutputText] = useState('');
+      const [foundWords, setFoundWords] = useState(new Set());
+      const [highlight, setHighlight] = useState(true);
+      const [inputCount, setInputCount] = useState({ words: 0, chars: 0 });
+      const [outputCount, setOutputCount] = useState({ words: 0, chars: 0 });
+      const [copyFeedback, setCopyFeedback] = useState('');
+      const [showToast, setShowToast] = useState(false);
+
+      const riskyWords = [
+        'mail', 'email', 'emails', 'e-mail', 'gmail', 'gmails', 'hotmail', 'outlook', 'yahoo', 'phone', 'number', 'contact', 'call', 'contact us','Umran',
+        'whatsapp', 'telegram', 'skype', 'zoom', 'meet', 'hangouts', 'viber', 'imo', 'signal','Send money',
+        'pay', 'payment', 'payments', 'purchase', 'purchasing', 'purchased', 'paypal', 'stripe', 'venmo', 'cashapp', 'bank', 'western union', 'moneygram', 'btc', 'bitcoin', 'crypto', 'wallet',
+        'wire transfer', 'invoice', 'direct payment', 'outside fiverr', 'outside fiver', 'off fiverr', 'off fiver', 'send money', 'money', 'buy', 'pricing', 'salary',
+        'personal website', 'domain', 'upwork', 'outside', 'feedback', 'rating', 'freelancer', 'freelancer.com', 'peopleperhour', 'toptal', 'fiverr alternative',
+        'facebook', 'messenger', 'instagram', 'linkedin', 'twitter', 'x.com', 'snapchat', 'tiktok', 'youtube', 'pinterest', 'reddit', 'discord',
+        'give me your number', 'contact me outside', 'message me on', 'hire me on', 'work outside fiverr', 'pay directly',
+        'gambling', 'casino', 'betting', 'sports betting', 'poker', 'slot games', 'slots', 'blackjack', 'roulette',
+        'fuck', 'shit', 'bitch', 'bastard', 'asshole', 'dick', 'pussy', 'slut', 'whore', 'cunt', 'nude', 'nudes', 'porn', 'sex', 'hentai', 'adult content',
+        'kill', 'die', 'suicide', 'bomb', 'terrorist', 'attack', 'shoot', 'gun', 'weapon', 'review', 'reviews', 'contacts', 'payroll', 'slack', 'address', 'rizwan', 'ratings','star'
+      ];
+
+      const customHyphenPositions = {
+        'payment': [2],
+        'payments': [2],
+        'payroll': [2],
+        'payslip': [2]
+      };
+
+      const insertHyphen = (word) => {
+        const clean = word.replace(/[^a-zA-Z]/g, '').toLowerCase();
+        if (clean.length < 2) return word;
+
+        let pos;
+        if (customHyphenPositions[clean]) {
+          const positions = customHyphenPositions[clean];
+          pos = positions[Math.floor(Math.random() * positions.length)];
+        } else {
+          pos = Math.floor(clean.length / 2);
+        }
+
+        const hyphenated = clean.slice(0, pos) + '-' + clean.slice(pos);
+        return word.replace(new RegExp(clean, 'i'), hyphenated);
+      };
+
+      const processMessage = () => {
+        if (!inputText.trim()) {
+          alert('⚠️ Please enter a message!');
+          return;
+        }
+
+        let text = inputText;
+        let htmlText = inputText;
+        const found = new Set();
+
+        riskyWords.forEach(risky => {
+          const pattern = new RegExp(`\\b${risky}\\b`, 'gi');
+
+          text = text.replace(pattern, match => {
+            found.add(match.toLowerCase());
+            return insertHyphen(match);
+          });
+
+          htmlText = htmlText.replace(pattern, match => {
+            found.add(match.toLowerCase());
+            const cleaned = insertHyphen(match);
+            return highlight
+              ? `<span style="background-color: #ffcccc; color: #a00; padding: 2px 4px; border-radius: 3px;">${cleaned}</span>`
+              : cleaned;
+          });
+        });
+
+        // Add colors for Buyer: and Seller:
+        htmlText = htmlText.replace(/buyer\s*:/gi, '<b style="color: red;">Buyer:</b>');
+        htmlText = htmlText.replace(/seller\s*:/gi, '<b style="color: blue;">Seller:</b>');
+
+        // Add colors for Requirements: and Custom Offer:
+        htmlText = htmlText.replace(/requirements\s*:/gi, '<b style="color: #FF00FF;">Requirements:</b>');
+        htmlText = htmlText.replace(/custom\s*offer\s*:/gi, '<b style="color: #FF00FF;">Custom Offer:</b>');
+
+        // Preserve line breaks for HTML output
+        htmlText = htmlText.replace(/\n/g, '<br />');
+
+        // Wrap in a span to ensure the rest of the text is explicitly black for the clipboard
+        htmlText = `<div style="color: black; font-family: Arial, sans-serif;">${htmlText}</div>`;
+
+        setFoundWords(found);
+        setOutputText(text);
+        setOutputHTML(htmlText);
+        updateCounts(inputText, text);
+
+        // Clear input and show toast
+        setInputText('');
+        setInputCount({ words: 0, chars: 0 });
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      };
+
+      const updateCounts = (input, output) => {
+        const inputWords = input.trim().split(/\s+/).filter(Boolean).length;
+        const outputWords = output.trim().split(/\s+/).filter(Boolean).length;
+        setInputCount({ words: inputWords, chars: input.length });
+        setOutputCount({ words: outputWords, chars: output.length });
+      };
+
+      const handleInputChange = (e) => {
+        const text = e.target.value;
+        setInputText(text);
+        updateCounts(text, outputText);
+      };
+
+      const copyOutput = () => {
+        if (!outputText.trim()) {
+          alert('⚠️ No safe message to copy!');
+          return;
+        }
+
+        try {
+          // The most reliable way to copy rich text (HTML + Plain Text)
+          const onCopy = (e) => {
+            e.clipboardData.setData('text/html', outputHTML);
+            e.clipboardData.setData('text/plain', outputText);
+            e.preventDefault();
+          };
+
+          document.addEventListener('copy', onCopy);
+          const successful = document.execCommand('copy');
+          document.removeEventListener('copy', onCopy);
+
+          if (successful) {
+            setCopyFeedback('✅ Copied!');
+            setTimeout(() => setCopyFeedback(''), 2000);
+          } else {
+            throw new Error('execCommand failed');
+          }
+        } catch (err) {
+          console.error('Rich copy failed, falling back to plain text:', err);
+          // Fallback to basic plain text copy
+          const textArea = document.createElement("textarea");
+          textArea.value = outputText;
+          document.body.appendChild(textArea);
+          textArea.select();
+          try {
+            document.execCommand('copy');
+            setCopyFeedback('✅ Copied!');
+            setTimeout(() => setCopyFeedback(''), 2000);
+          } catch (err2) {
+            alert('❌ Copy failed!');
+          }
+          document.body.removeChild(textArea);
+        }
+      };
+
+      const pasteToInput = () => {
+        if (!outputText.trim()) {
+          alert('⚠️ No safe message to paste!');
+          return;
+        }
+        setInputText(outputText);
+        updateCounts(outputText, outputText);
+      };
+
+      // SVG Icons as components
+      const Shield = () => (
+        <svg className="w-10 h-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      );
+
+      const AlertCircle = () => (
+        <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+
+      const Copy = () => (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      );
+
+      const Clipboard = () => (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      );
+
+      return (
+        <div className="min-h-screen bg-sky-100 p-6">
+          {showToast && (
+            <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center gap-2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+              <div className="w-5 h-5"><Shield /></div>
+              <span className="font-bold">Message processed and input cleared!</span>
+            </div>
+          )}
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center gap-3 mb-2">
+                <Shield />
+                <h1 className="text-4xl font-bold text-slate-800">Fiverr Safe Message For BDT</h1>
+              </div>
+              <p className="text-slate-600 text-lg">Protect your Fiverr messages from policy violations</p>
+            </div>
+
+            <div className="bg-sky-50 border border-sky-300 rounded-lg p-3 mb-6 flex gap-3 max-w-2xl mx-auto shadow-sm">
+              <div className="text-sky-600"><AlertCircle /></div>
+              <p className="text-sky-800 text-sm font-medium">
+                Always manually review the final message. This tool works carefully but cannot guarantee 100% accuracy.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              {/* Left Side: Input */}
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xl">
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-slate-700 font-semibold flex items-center gap-2">✍️ Your Message:</label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={highlight}
+                        onChange={(e) => setHighlight(e.target.checked)}
+                        className="w-4 h-4 rounded accent-blue-600"
+                      />
+                      <span className="text-slate-500 text-sm">🔦 Highlight words</span>
+                    </label>
+                  </div>
+                  
+                  <textarea
+                    value={inputText}
+                    onChange={handleInputChange}
+                    placeholder="Write your Fiverr message here..."
+                    className="w-full h-[400px] bg-slate-50 border border-slate-200 rounded-lg p-4 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none mb-2 transition-all"
+                  />
+                  <div className="flex justify-between items-center text-slate-500 text-sm mb-3">
+                    <span>Words: {inputCount.words}</span>
+                    <span>Characters: {inputCount.chars}</span>
+                  </div>
+
+                  <button
+                    onClick={processMessage}
+                    className="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    🔍 Make It Safe
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Side: Output */}
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xl">
+                <div className="p-5">
+                  <label className="block text-slate-700 font-semibold mb-3">✅ Safe Message:</label>
+                  <div
+                    className="w-full h-[400px] bg-slate-50 border border-slate-200 rounded-lg p-4 text-slate-900 overflow-y-auto whitespace-pre-wrap break-words mb-2"
+                    dangerouslySetInnerHTML={{
+                      __html: outputHTML || '<span class="text-slate-400 italic">Your safe message will appear here...</span>'
+                    }}
+                  />
+                  <div className="flex justify-between items-center text-slate-500 text-sm mb-3">
+                    <span>Words: {outputCount.words}</span>
+                    <span>Characters: {outputCount.chars}</span>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={copyOutput}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg active:scale-95"
+                    >
+                      <Copy />
+                      {copyFeedback || '📑 Copy Message'}
+                    </button>
+                    <button
+                      onClick={pasteToInput}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg active:scale-95"
+                    >
+                      <Clipboard />
+                      📥 Re-edit
+                    </button>
+                  </div>
+                </div>
+
+                {foundWords.size > 0 && (
+                  <div className="p-3 bg-red-50 border-t border-red-200 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="flex gap-3">
+                      <div className="text-red-600 flex-shrink-0"><AlertCircle /></div>
+                      <div>
+                        <p className="text-red-800 font-semibold text-sm">❌ Restricted Words Detected:</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {Array.from(foundWords).map(word => (
+                            <span key={word} className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded border border-red-200">
+                              {word}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <footer className="text-center mt-8 text-slate-600 text-sm">
+              © <a href="https://rafisportfolio.netlify.app" className="hover:text-blue-600 transition-colors duration-300 ease-in-out font-medium" target="_blank" rel="noopener noreferrer">
+                Rafi
+              </a> || BDT Alpha
+            </footer>
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<FiverrSafeTool />, document.getElementById('root'));
+  </script>
+</body>
+
+</html>
